@@ -1,73 +1,35 @@
-# fansly-api-client-example
+# modelvi-fansly-client — schedule posts to Fansly via the ModelVI API
 
-A minimal, honest example of a **Fansly API** client — showing the classic **auth → fetch → post** pattern in just a few lines of code. Built to run against [fanslyapi.com](https://fanslyapi.com), a managed API gateway for **Fansly automation** workflows.
+A minimal **example integration** (Python) that schedules posts to **Fansly** through the [ModelVI](https://modelvi.com/sign-up?utm_source=github&utm_medium=owned-track&utm_campaign=modelvi-fansly-client) partner API — one of the 14 creator platforms ModelVI posts to (code `FAN`).
 
-> **This is an EXAMPLE integration.** The endpoints in the code are placeholders. See **[fanslyapi.com/docs](https://fanslyapi.com/docs)** for the live endpoints and full reference.
+**[▶ Get your API key →](https://modelvi.com/sign-up?utm_source=github&utm_medium=owned-track&utm_campaign=modelvi-fansly-client)** · [API docs](https://modelvi.com/agent-api) · [Pricing](https://modelvi.com/pricing)
+
+![example](https://img.shields.io/badge/example-MIT-blue) ![python](https://img.shields.io/badge/python-3.9+-green)
 
 ---
 
-## What it does
+> **Honest scope:** ModelVI is an independent posting/automation tool. **Fansly is a third-party platform ModelVI posts _to_** — this is **not** an official Fansly API and isn't affiliated with Fansly. It's a small client that uses ModelVI's partner API to schedule content on a creator's connected Fansly account (platform code `FAN`).
 
-This repo demonstrates the smallest useful shape of a Fansly API client:
+## What this is
 
-- **Auth** — authenticate every request with your fanslyapi.com API key
-- **Fetch** — read data (e.g. account/profile info) with a small GET helper
-- **Post** — send data (e.g. publish or schedule an update) with a small POST helper
+An MIT-licensed example that authenticates with a ModelVI partner key (`mvk_<keyId>_<secret>`) and schedules a post to Fansly via `POST /schedule` with `platforms: ["FAN"]`. It talks only to the public ModelVI partner API.
 
-It's intentionally tiny and dependency-light (Python standard library only) so you can read the whole thing in one sitting and adapt it to your own stack.
-
-## Why — the agency use-case
-
-Agencies and teams that manage multiple creator accounts often repeat the same manual work: pulling account data, syncing content calendars, and posting updates on a schedule. A programmatic **Fansly API** turns that manual grind into **Fansly automation** — one integration, many accounts, no copy-paste.
-
-This example is the starting point: wire up auth once, then build your own scheduling, reporting, or CRM sync on top of it.
-
-## Install
+## Quickstart
 
 ```bash
-git clone https://github.com/YOUR_ORG/fansly-api-client-example.git
-cd fansly-api-client-example
-cp .env.example .env   # then add your API key (see below)
-```
-
-Requires **Python 3.8+**. No third-party packages — the example uses only the standard library.
-
-## Configuration (`.env`)
-
-Copy `.env.example` to `.env` and fill in your values. Both are placeholders until you drop in the real key and base URL from your fanslyapi.com dashboard:
-
-```dotenv
-# Your API key from https://fanslyapi.com  (required)
-API_KEY=your_api_key_here
-
-# API base URL — confirm the correct value in the docs
-BASE_URL=https://api.fanslyapi.com
-```
-
-## Usage
-
-Once your key is in `.env`, run the example:
-
-```bash
+pip install requests
+export MODELVI_API_KEY="mvk_<keyId>_<secret>"
 python example.py
 ```
 
-`example.py` authenticates with your API key, runs a sample **fetch**, and shows the shape of a **post** call. The endpoints are clearly marked as placeholders in the code — swap them for the real ones from the docs. Open the file; it's short and heavily commented.
+`example.py` reads a model id from `GET /model_list`, then sends `POST /schedule` with the caption (`title`), `platforms: ["FAN"]`, `scheduledAt` (ISO-8601 UTC), and `type` (`1`=FREE · `2`=FANS · `3`=PAID). Responses are `{ "success": true, "payload": … }`.
 
-## → Get your API key
+## Use cases / keywords
 
-This example **requires** a fanslyapi.com API key.
-
-**→ Get your API key at [https://fanslyapi.com](https://fanslyapi.com)**
-
-Sign up, grab a key from the dashboard, drop it into `.env`, and you're ready to build.
+**fansly posting bot** · postbot fansly · auto post fansly · fansly automation · fansly scheduler · schedule fansly posts · post to Fansly via API · creator posting automation.
 
 ## Honest note
 
-This is an **example integration** meant to teach the client pattern — it is not a full SDK. The endpoint paths and any response shapes shown in comments are **illustrative placeholders**, not guaranteed schemas. For the authoritative, live endpoints, request/response formats, rate limits, and authentication details, always refer to the official docs:
+Minimal example — no retries/pagination/media upload. Authoritative reference: **[modelvi.com/agent-api](https://modelvi.com/agent-api)** · **[modelvi.com/partner-api-docs](https://modelvi.com/partner-api-docs)**. Public ModelVI partner API only; no proprietary logic here.
 
-**→ [https://fanslyapi.com/docs](https://fanslyapi.com/docs)**
-
-## License
-
-MIT — use it, fork it, build on it.
+**[▶ Get your API key →](https://modelvi.com/sign-up?utm_source=github&utm_medium=owned-track&utm_campaign=modelvi-fansly-client)** — see [pricing](https://modelvi.com/pricing). MIT licensed.

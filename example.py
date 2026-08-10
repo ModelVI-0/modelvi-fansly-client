@@ -1,112 +1,66 @@
+#!/usr/bin/env python3
 """
-fansly-api-client-example
-A minimal example client for the Fansly API: auth, fetch, post.
+modelvi-fansly-client
 
-Runs against fanslyapi.com — a managed API gateway for Fansly automation.
-  Get your API key at:            https://fanslyapi.com
-  Live endpoints & reference:     https://fanslyapi.com/docs
+Schedule a post to Fansly via the public ModelVI partner API.
 
-IMPORTANT: The endpoint paths below are PLACEHOLDERS. This is an EXAMPLE
-integration. Replace every path (and confirm the auth header) with the real
-values from https://fanslyapi.com/docs before using this for anything real.
+Honest scope: ModelVI is an independent posting tool; Fansly is a third-party
+platform ModelVI posts TO. This is NOT an official Fansly API. It uses ModelVI's
+partner API with platform code "FAN".
 
-Standard library only — no third-party packages required (Python 3.8+).
+  Get an API key:  https://modelvi.com/sign-up
+  API reference:   https://modelvi.com/agent-api
+
+Minimal EXAMPLE (no retries/pagination/media upload).
+
+  export MODELVI_API_KEY="mvk_<keyId>_<secret>"
+  python example.py
 """
 
 import os
 import sys
-import json
-import urllib.request
-import urllib.error
+from datetime import datetime, timezone, timedelta
+
+import requests  # pip install requests
+
+BASE_URL = os.environ.get("MODELVI_API_BASE", "https://modelvi.com/api/partner/v1")
+API_KEY = os.environ.get("MODELVI_API_KEY")
+SIGNUP_URL = "https://modelvi.com/sign-up"
+PLATFORM = "FAN"  # Fansly platform code
 
 
-def load_dotenv(path=".env"):
-    """Tiny .env loader (stdlib only) so the example runs without extra packages.
-    Real projects may prefer python-dotenv or their framework's config layer."""
-    if not os.path.exists(path):
-        return
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip())
+def _headers():
+    if not API_KEY:
+        sys.exit(f"Missing MODELVI_API_KEY. Get a key at {SIGNUP_URL} and export it.")
+    return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 
-class FanslyApiClient:
-    """A tiny client demonstrating the auth -> fetch -> post pattern."""
-
-    def __init__(self, api_key, base_url):
-        # --- auth: an API key is required. Funnel: get one at fanslyapi.com ---
-        if not api_key:
-            raise ValueError(
-                "Missing API key. Get one at https://fanslyapi.com "
-                "and set API_KEY in your .env file."
-            )
-        self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
-
-    def _headers(self):
-        """Every request is authenticated with your fanslyapi.com API key.
-        NOTE: the header name/scheme here is illustrative — confirm the real
-        one at https://fanslyapi.com/docs."""
-        return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-
-    def _request(self, method, path, payload=None):
-        url = f"{self.base_url}{path}"
-        data = json.dumps(payload).encode("utf-8") if payload is not None else None
-        req = urllib.request.Request(
-            url, data=data, method=method, headers=self._headers()
-        )
-        try:
-            with urllib.request.urlopen(req) as resp:
-                body = resp.read().decode("utf-8")
-                return json.loads(body) if body else {}
-        except urllib.error.HTTPError as e:
-            print(f"[error] {method} {path} -> HTTP {e.code}: {e.reason}", file=sys.stderr)
-            print("        Check your API key and endpoint at "
-                  "https://fanslyapi.com/docs", file=sys.stderr)
-            raise
-
-    # --- FETCH (read) --------------------------------------------------------
-    def get_account(self):
-        """Example FETCH. PLACEHOLDER endpoint — replace '/v1/account' with the
-        real endpoint from https://fanslyapi.com/docs. The response shape is not
-        defined here on purpose; the docs are the source of truth."""
-        return self._request("GET", "/v1/account")
-
-    # --- POST (write) --------------------------------------------------------
-    def create_post(self, text):
-        """Example POST. PLACEHOLDER endpoint + body — replace '/v1/posts' and the
-        payload shape with the real ones from https://fanslyapi.com/docs."""
-        payload = {"text": text}
-        return self._request("POST", "/v1/posts", payload)
+def _payload(resp):
+    if resp.status_code == 401:
+        sys.exit(f"Unauthorized (401). Get a valid key at {SIGNUP_URL}")
+    resp.raise_for_status()
+    body = resp.json()
+    return body.get("payload", body)
 
 
 def main():
-    load_dotenv()
+    models = _payload(requests.get(f"{BASE_URL}/model_list", headers=_headers(), timeout=30))
+    if not models:
+        sys.exit("No models on this account yet — add one in your ModelVI dashboard.")
+    model = models[0] if isinstance(models, list) else models.get("items", [{}])[0]
+    model_id = model.get("id") or model.get("model")
 
-    api_key = os.environ.get("API_KEY")
-    # BASE_URL is a placeholder default — confirm the correct value in the docs.
-    base_url = os.environ.get("BASE_URL", "https://api.fanslyapi.com")
-
-    client = FanslyApiClient(api_key=api_key, base_url=base_url)
-
-    # 1) FETCH — read account data (placeholder endpoint)
-    print("Fetching account (placeholder endpoint)...")
-    account = client.get_account()
-    # The printed structure is whatever the live API returns — see the docs.
-    print(json.dumps(account, indent=2))
-
-    # 2) POST — send an update (placeholder endpoint)
-    print("Creating a post (placeholder endpoint)...")
-    result = client.create_post("Hello from the fansly-api-client-example.")
-    print(json.dumps(result, indent=2))
+    when = datetime.now(timezone.utc) + timedelta(minutes=5)
+    body = {
+        "model": model_id,
+        "platforms": [PLATFORM],
+        "title": "New drop is live ✨",          # the caption field is `title`
+        "scheduledAt": when.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "type": 1,                                # 1=FREE, 2=FANS, 3=PAID
+    }
+    print(f"POST {BASE_URL}/schedule → {PLATFORM}")
+    print("Scheduled:", _payload(requests.post(f"{BASE_URL}/schedule", json=body,
+                                               headers=_headers(), timeout=30)))
 
 
 if __name__ == "__main__":
